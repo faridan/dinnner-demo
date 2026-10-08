@@ -1,0 +1,10 @@
+# CPU-only PyTorch (about 2 GB smaller than the default CUDA build)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1
+gradio==6.29.1
+transformers==5.19.0
+tokenizers==0.23.2
+huggingface_hub==1.33.0
+pymupdf==1.28.2
+nltk==3.10.3
+pandas==3.0.5

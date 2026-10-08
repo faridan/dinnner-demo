@@ -1,0 +1,26 @@
+# Every push to main on GitHub is mirrored to the Hugging Face Space, which
+# then rebuilds the public website. One-time setup in the GitHub repo:
+#   Settings > Secrets and variables > Actions
+#     Secret   HF_TOKEN     a Hugging Face token with write access
+#     Variable HF_SPACE     e.g. your-hf-username/dinnner
+name: sync to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: ${{ vars.HF_SPACE != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push to Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          git push --force "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" HEAD:main

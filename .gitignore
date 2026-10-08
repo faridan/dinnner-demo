@@ -1,0 +1,13 @@
+# Model weights live on the Hugging Face Hub, never in git (GitHub caps files at 100 MB)
+weights/
+*.pth
+*.pt
+*.bin
+*.safetensors
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.DS_Store
+hf_token.txt
