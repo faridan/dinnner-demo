@@ -1,23 +1,31 @@
 """DINNNER online tool: biomedical named entity recognition in the browser.
 
-Runs as a Gradio app (free Hugging Face Space). Locally:  python app.py
+Runs as a Gradio app on a Hugging Face Space (ZeroGPU or CPU). Locally:  python app.py
 """
 
-import html
 import os
-import tempfile
-import time
 
-import gradio as gr
-import pandas as pd
-import torch
+# On ZeroGPU Spaces, `spaces` must be imported before torch touches CUDA.
+try:
+    import spaces
+except ImportError:  # not installed locally; everything runs on CPU/GPU as usual
+    spaces = None
+ON_ZEROGPU = spaces is not None and os.environ.get("SPACES_ZERO_GPU", "").lower() in ("1", "true")
 
-from dinnner import DEFAULT_MODEL, MODELS, load_model, predict
-from dinnner.config import BATCH_SIZE, MAX_PDF_FILES, MAX_PDF_PAGES, MAX_TEXT_CHARS
-from dinnner.examples import EXAMPLES
-from dinnner.text import conll_text, entities_frame, extract_pdf_text, sentences_frame, split_sentences
+import html  # noqa: E402
+import tempfile  # noqa: E402
+import time  # noqa: E402
 
-GITHUB_URL = os.environ.get("DINNNER_GITHUB_URL", "https://github.com/YOUR_GITHUB_USERNAME/dinnner-demo")
+import gradio as gr  # noqa: E402
+import pandas as pd  # noqa: E402
+import torch  # noqa: E402
+
+from dinnner import DEFAULT_MODEL, MODELS, load_model, predict  # noqa: E402
+from dinnner.config import BATCH_SIZE, MAX_PDF_FILES, MAX_PDF_PAGES, MAX_TEXT_CHARS  # noqa: E402
+from dinnner.examples import EXAMPLES  # noqa: E402
+from dinnner.text import conll_text, entities_frame, extract_pdf_text, sentences_frame, split_sentences  # noqa: E402
+
+GITHUB_URL = os.environ.get("DINNNER_GITHUB_URL", "https://github.com/faridan/dinnner-demo")
 PAPER_URL = os.environ.get("DINNNER_PAPER_URL", "")
 SHOW_LIMIT = 300  # sentences rendered in the annotated view (all are in the downloads)
 
@@ -57,7 +65,9 @@ CSS = """
 # --------------------------------------------------------------------------
 
 _MODELS, _LOAD_ERRORS = {}, {}
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# On ZeroGPU the model is placed on "cuda" at start-up (an emulated device);
+# a real GPU is attached only while a @spaces.GPU function runs.
+DEVICE = torch.device("cuda" if ON_ZEROGPU or torch.cuda.is_available() else "cpu")
 
 
 def get_model(key):
@@ -122,21 +132,49 @@ def legend_html(spec):
 # Processing
 # --------------------------------------------------------------------------
 
+def _tag_docs(docs, model_key, progress_cb=None):
+    """Run DINNNER over {source: [sentences]}; returns {source: [SentenceResult]}."""
+    spec = MODELS[model_key]
+    model, tokenizer = _MODELS[model_key]
+    total = sum(len(s) for s in docs.values())
+    results, done = {}, 0
+    for src, sents in docs.items():
+        def cb(d, n, base=done, k=len(sents), src=src):
+            if progress_cb:
+                progress_cb((base + k * d / max(n, 1)) / total, src)
+        results[src] = predict(sents, model, tokenizer, spec.id2label, DEVICE,
+                               max_length=spec.max_length, batch_size=BATCH_SIZE, progress=cb)
+        done += len(sents)
+    return results
+
+
+def _gpu_seconds(docs, model_key):
+    """GPU time to reserve on ZeroGPU: short requests get better queue priority."""
+    n = sum(len(s) for s in docs.values())
+    return int(min(120, 15 + n / 25))
+
+
+def _tag_docs_gpu(docs, model_key):
+    return _tag_docs(docs, model_key)
+
+
+if ON_ZEROGPU:
+    _tag_docs_gpu = spaces.GPU(duration=_gpu_seconds)(_tag_docs_gpu)
+
+
 def _run(docs, model_key, notes, progress):
     if not any(docs.values()):
         raise gr.Error("No sentences were found in the input.")
     spec = MODELS[model_key]
     progress(0, desc="Loading model...")
-    model, tokenizer = get_model(model_key)
+    get_model(model_key)  # surfaces loading errors before any GPU is requested
 
-    total = sum(len(s) for s in docs.values())
-    results, done, t0 = {}, 0, time.time()
-    for src, sents in docs.items():
-        def cb(d, n, base=done, k=len(sents), src=src):
-            progress((base + k * d / max(n, 1)) / total, desc=f"Tagging entities in {src}")
-        results[src] = predict(sents, model, tokenizer, spec.id2label, DEVICE,
-                               max_length=spec.max_length, batch_size=BATCH_SIZE, progress=cb)
-        done += len(sents)
+    t0 = time.time()
+    if ON_ZEROGPU:
+        progress(0.05, desc="Tagging entities on GPU...")
+        results = _tag_docs_gpu(docs, model_key)
+    else:
+        results = _tag_docs(docs, model_key, lambda f, src: progress(f, desc=f"Tagging entities in {src}"))
 
     # Write the downloads once per run (they always contain everything).
     out_dir = tempfile.mkdtemp(prefix="dinnner_")

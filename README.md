@@ -103,12 +103,14 @@ appears in the model selector.
 ## Deployment (maintainers)
 
 The code lives on GitHub; the public site runs on a free Hugging Face Space
-(Gradio SDK, CPU basic: 2 vCPU, 16 GB RAM), and every push to `main` redeploys it.
+(Gradio SDK, ZeroGPU hardware), and every push to `main` redeploys it. On ZeroGPU the
+app borrows a GPU only while it tags text (`@spaces.GPU` in `app.py`); the same code
+also runs unchanged on CPU hardware.
 
 1. **Publish the weights.** `hf auth login`, then
    `python scripts/upload_weights.py --checkpoint path/to/checkpoint.pth --repo faridan/dinnner-pubmedbert-bionlp13pc`
 2. **Create the Space** at huggingface.co/new-space: name `dinnner`, SDK **Gradio**,
-   template **Blank**, hardware **CPU basic (free)**, public.
+   template **Blank**, hardware **ZeroGPU**, public.
 3. **Configure the Space** (Settings > Variables and secrets), as *variables*:
    `DINNNER_WEIGHTS_REPO` = `faridan/dinnner-pubmedbert-bionlp13pc`,
    `DINNNER_GITHUB_URL` = this repository's URL, and later `DINNNER_PAPER_URL`.
@@ -117,8 +119,9 @@ The code lives on GitHub; the public site runs on a free Hugging Face Space
    `HF_SPACE` = `faridan/dinnner`. Push to `main`; the
    *sync to Hugging Face Space* workflow mirrors the code and the Space rebuilds.
 
-A free Space sleeps after 48 hours without visitors and wakes on the next visit, which
-takes a minute or two.
+ZeroGPU gives each visitor a daily GPU allowance (a few minutes); one DINNNER request
+uses only seconds of it. An idle Space sleeps and wakes on the next visit, which takes
+a minute or two.
 
 ## Citation
 

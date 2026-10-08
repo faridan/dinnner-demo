@@ -147,3 +147,19 @@ def test_app_handlers(standin, monkeypatch):
     assert "Gene or gene product" not in annotated2
     with pytest.raises(app.gr.Error):
         app.analyse_text("   ", app.DEFAULT_MODEL, progress=lambda *a, **k: None)
+
+
+def test_zerogpu_branch(standin, monkeypatch):
+    """The ZeroGPU code path, using the real spaces.GPU decorator (a pass-through off Hugging Face)."""
+    spaces = pytest.importorskip("spaces")
+    spec, model, tok = standin
+    import app
+
+    monkeypatch.setitem(app._MODELS, app.DEFAULT_MODEL, (model, tok))
+    monkeypatch.setattr(app, "ON_ZEROGPU", True)
+    monkeypatch.setattr(app, "_tag_docs_gpu", spaces.GPU(duration=app._gpu_seconds)(app._tag_docs_gpu.__wrapped__
+                        if hasattr(app._tag_docs_gpu, "__wrapped__") else app._tag_docs_gpu))
+    out = app.analyse_text(" ".join(EXAMPLES.values()), app.DEFAULT_MODEL, progress=lambda *a, **k: None)
+    assert sum(len(r.entities) for r in out[0]["results"]["Pasted text"]) > 0
+    assert app._gpu_seconds({"a": ["s"] * 10}, app.DEFAULT_MODEL) == 15
+    assert app._gpu_seconds({"a": ["s"] * 100000}, app.DEFAULT_MODEL) == 120
