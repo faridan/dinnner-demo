@@ -123,7 +123,7 @@ ZeroGPU gives each visitor a daily GPU allowance (a few minutes); one DINNNER re
 uses only seconds of it. An idle Space sleeps and wakes on the next visit, which takes
 a minute or two.
 
-## Citation
+<!-- ## Citation
 
 If you use DINNNER, please cite:
 
@@ -131,10 +131,10 @@ If you use DINNNER, please cite:
 @article{dinnner,
   title   = {TODO},
   author  = {TODO},
-  journal = {Intelligent Systems with Applications},
+  journal = {TODO},
   year    = {TODO}
 }
-```
+``` -->
 
 ## Acknowledgements
 
