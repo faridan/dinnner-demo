@@ -329,7 +329,7 @@ with gr.Blocks(title="DINNNER | Biomedical NER") as demo:
     state = gr.State(None)
 
     gr.Markdown(
-        "# 🧬 DINNNER: biomedical entity recognition\n"
+        "# 🧬 DINNNER: Find Entities in Biomedical Text\n"
         "Paste biomedical text or upload research articles (PDF). DINNNER tags **genes and gene products, "
         "simple chemicals, complexes and cellular components**. Results appear below and can be downloaded as CSV."
     )

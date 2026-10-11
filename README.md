@@ -11,7 +11,7 @@ pinned: false
 short_description: Biomedical named entity recognition with DINNNER
 ---
 
-# DINNNER: online biomedical named entity recognition
+# DINNNER: Find Entities in Biomedical Text
 
 [![tests](https://github.com/faridan/dinnner-demo/actions/workflows/tests.yml/badge.svg)](https://github.com/faridan/dinnner-demo/actions/workflows/tests.yml)
 [![Open the online tool](https://img.shields.io/badge/🤗%20Online%20tool-DINNNER-teal)](https://huggingface.co/spaces/faridan/dinnner)
